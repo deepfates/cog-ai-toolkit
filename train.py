@@ -3,6 +3,7 @@
 
 from cog import BaseModel, Input, Path, Secret
 import os
+import yaml
 import subprocess
 from zipfile import ZipFile
 from huggingface_hub import HfApi
@@ -33,22 +34,24 @@ def train(
     # Set huggingface token via huggingface-cli login
     os.system(f"huggingface-cli login --token {hf_token.get_secret_value()}")
 
-    # replace the 'name_or_path: 'black-forest-labs/FLUX.1-dev' value in the config file
-    os.system(f"sed -i 's/name_or_path: 'black-forest-labs/FLUX.1-dev'/name_or_path: {model_name}/' config/replicate.yml")
-    # replace the 'steps: 1000' value in the config file
-    os.system(f"sed -i 's/steps: 1000/steps: {steps}/' config/replicate.yml")
-    # replace the 'save_every: 1001' value in the config file
-    os.system(f"sed -i 's/save_every: 1001/save_every: {steps+1}/' config/replicate.yml")
-    # replace the 'lr: 4e-4' value in the config file
-    os.system(f"sed -i 's/lr: 4e-4/lr: {learning_rate}/' config/replicate.yml")
-    # replace the 'batch_size: 1' value in the config file
-    os.system(f"sed -i 's/batch_size: 1/batch_size: {batch_size}/' config/replicate.yml")
-    # replace the 'resolution: [ 512, 768, 1024 ]' value in the config file
-    os.system(f"sed -i 's/resolution: [ 512, 768, 1024 ]/resolution: [{resolution}]/' config/replicate.yml")
-    # replace the 'linear: 16' value in the config file
-    os.system(f"sed -i 's/linear: 16/linear: {lora_linear}/' config/replicate.yml")
-    # replace the 'linear_alpha: 16' value in the config file
-    os.system(f"sed -i 's/linear_alpha: 16/linear_alpha: {lora_linear_alpha}/' config/replicate.yml")
+    # Update the config file using YAML
+    config_path = "config/replicate.yml"
+    with open(config_path, 'r') as file:
+        config = yaml.safe_load(file)
+
+    # Update the configuration
+    config['config']['process'][0]['model']['name_or_path'] = model_name
+    config['config']['process'][0]['train']['steps'] = steps
+    config['config']['process'][0]['save']['save_every'] = steps + 1
+    config['config']['process'][0]['train']['lr'] = learning_rate
+    config['config']['process'][0]['train']['batch_size'] = batch_size
+    config['config']['process'][0]['datasets'][0]['resolution'] = [int(res) for res in resolution.split(',')]
+    config['config']['process'][0]['network']['linear'] = lora_linear
+    config['config']['process'][0]['network']['linear_alpha'] = lora_linear_alpha
+
+    # Save config changes
+    with open(config_path, 'w') as file:
+        yaml.dump(config, file)
     
     # Unzip images from input images file to the input_images folder
     input_dir = "input_images"
