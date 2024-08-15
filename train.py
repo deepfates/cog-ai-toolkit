@@ -27,9 +27,12 @@ def train(
     repo_id: str = Input(description="Enter HuggingFace repo id to upload LoRA to HF. Will return zip file if left empty.Ex: lucataco/flux-dev-lora", default=None),
 ) -> TrainingOutput:
     """Run a single prediction on the model"""
-    print("Starting prediction")
+    print("Starting Training")
     # Cleanup previous runs
     os.system("rm -rf output")
+    # Cleanup training images (from canceled training runs)
+    input_dir = "input_images"
+    os.system(f"rm -rf {input_dir}")
 
     # Set huggingface token via huggingface-cli login
     os.system(f"huggingface-cli login --token {hf_token.get_secret_value()}")
@@ -54,7 +57,6 @@ def train(
         yaml.dump(config, file)
     
     # Unzip images from input images file to the input_images folder
-    input_dir = "input_images"
     input_images = str(images)
     if input_images.endswith(".zip"):
         print("Detected zip file")
